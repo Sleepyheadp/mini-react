@@ -16,7 +16,9 @@ function createElement(type, props, ...children) {
 			...props,
 			children: children.map((child) => {
 				// children可能是一个字符串,也可能是一个dom节点,如果是字符串则需要创建一个文本节点
-				return typeof child === "string" ? createTextNode(child) : child;
+				const isTextNode =
+					typeof child === "string" || typeof child === "number";
+				return isTextNode ? createTextNode(child) : child;
 			}),
 		},
 	};
@@ -136,11 +138,18 @@ const performWorkOfUnit = (fiber) => {
 		return fiber.child;
 	}
 	// 4.2 如果当前任务没有子节点,则返回兄弟节点
-	if (fiber.sibling) {
-		return fiber.sibling;
+	// if (fiber.sibling) {
+	// 	return fiber.sibling;
+	// }
+
+	let nextFiber = fiber;
+	while (nextFiber) {
+		if (nextFiber.sibling) return nextFiber.sibling;
+		nextFiber = nextFiber.parent;
 	}
+
 	// 4.3 如果当前任务没有兄弟节点,则返回父节点的兄弟节点
-	return fiber.parent?.sibling;
+	// return fiber.parent?.sibling;
 };
 requestIdleCallback(workLoop);
 
