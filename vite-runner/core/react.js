@@ -1,3 +1,4 @@
+// 创建文本节点
 function createTextNode(text) {
 	return {
 		type: "TEXT_ELEMENT",
@@ -7,6 +8,7 @@ function createTextNode(text) {
 		},
 	};
 }
+// 创建dom节点
 function createElement(type, props, ...children) {
 	return {
 		type: type,
@@ -29,21 +31,37 @@ function render(el, container) {
 			children: [el],
 		},
 	};
+	rootDom = nextWorkOfUnit; // 根节点赋值
 }
 
 // 首先我们定义一个当前要执行的任务
+let rootDom = null; // dom树的根节点
 let nextWorkOfUnit = null;
 const workLoop = (idleDeadline) => {
 	let hasTimeEmpty = false; // 默认没有空闲时间
 	while (!hasTimeEmpty && nextWorkOfUnit) {
-		// 当有空闲时间时执行后续操作
-		// 当前的任务指向下一个任务
+		// 当有空闲时间并且有任务执行时,执行任务
+		// 指向当前的任务指向下一个任务
 		nextWorkOfUnit = performWorkOfUnit(nextWorkOfUnit);
 		hasTimeEmpty = idleDeadline.timeRemaining() < 1;
+	}
+	if (!nextWorkOfUnit && rootDom) {
+		// 说明dom树已经渲染完成,这个时候我们就可以将fiber树转换为dom树,可以append到根节点了
+		commitRoot();
 	}
 	requestIdleCallback(workLoop);
 };
 
+function commitRoot() {
+	commitWork(rootDom.child);
+	rootDom = null;
+}
+function commitWork(fiber) {
+	if (!fiber) return; // 如果后续没有任务了,则直接返回
+	fiber.parent.dom.append(fiber.dom);
+	commitWork(fiber.child);
+	commitWork(fiber.sibling);
+}
 // 抽离createDom
 function createDom(type) {
 	return type === "TEXT_ELEMENT"
@@ -85,7 +103,7 @@ const performWorkOfUnit = (fiber) => {
 	// 1. 创建dom节点
 	if (!fiber.dom) {
 		const dom = (fiber.dom = createDom(fiber.type));
-		fiber.parent.dom.append(dom);
+		// fiber.parent.dom.append(dom); // 将创建的dom节点添加到父节点中,但是没渲染完所有dom节点就中途添加了
 		// 2. 处理props
 		updateProps(dom, fiber.props);
 	}
