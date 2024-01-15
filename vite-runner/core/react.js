@@ -58,7 +58,18 @@ function commitRoot() {
 }
 function commitWork(fiber) {
 	if (!fiber) return; // 如果后续没有任务了,则直接返回
-	fiber.parent.dom.append(fiber.dom);
+	// 问题:这里就有一个问题,我们的函数组件并没有dom属性,因此页面会出现null字符
+	// 解决办法:我们需要对是否存在dom属性进行判断
+	let fiberParent = fiber.parent;
+	// 这里还有一个小问题?只查找一层父级是不够的,可能有多个dom进行嵌套.
+	// 需要层层向上查找,直到找到一个有dom属性的fiber节点
+	while (!fiberParent.dom) {
+		fiberParent = fiberParent.parent;
+	}
+	// 问题:函数组件没有dom属性,因此我们需要对其进行判断
+	if (fiber.dom) {
+		fiberParent.dom.append(fiber.dom);
+	}
 	commitWork(fiber.child);
 	commitWork(fiber.sibling);
 }
@@ -77,8 +88,8 @@ function updateProps(dom, props) {
 	});
 }
 // 转换链表
-function initChildren(fiber) {
-	const children = fiber.props.children;
+function initChildren(fiber, children) {
+	// const children = fiber.props.children;
 	let prevChild = null;
 	children.forEach((child, index) => {
 		// 创建一个新的fiber节点,给其设置相关的属性
@@ -99,16 +110,26 @@ function initChildren(fiber) {
 	});
 }
 const performWorkOfUnit = (fiber) => {
-	// 在这个函数中我们要做的事情就是执行当前任务,也就是render函数所做的事情
-	// 1. 创建dom节点
-	if (!fiber.dom) {
-		const dom = (fiber.dom = createDom(fiber.type));
-		// fiber.parent.dom.append(dom); // 将创建的dom节点添加到父节点中,但是没渲染完所有dom节点就中途添加了
-		// 2. 处理props
-		updateProps(dom, fiber.props);
+	// 检查一下fiber.type是否是一个函数组件
+	const isFunctionComponent = typeof fiber.type === "function";
+	// 因为我们的函数组件本身就自带dom,所以并不需要在对函数组件进行createDom的操作
+	if (!isFunctionComponent) {
+		// 在这个函数中我们要做的事情就是执行当前任务,也就是render函数所做的事情
+		// 1. 创建dom节点
+		if (!fiber.dom) {
+			const dom = (fiber.dom = createDom(fiber.type));
+			// fiber.parent.dom.append(dom); // 将创建的dom节点添加到父节点中,但是没渲染完所有dom节点就中途添加了
+			// 2. 处理props
+			updateProps(dom, fiber.props);
+		}
 	}
+
 	// 3. 转换链表 设置引用/指针(指向下一个任务)
-	initChildren(fiber);
+	// 在init子节点的时候把判断完的children传递过去,又因为我们的children默认是[],所以需要设置为数组类型的数据
+	const children = isFunctionComponent
+		? [fiber.type(fiber.props)]
+		: fiber.props.children;
+	initChildren(fiber, children);
 	// 4. 返回下一个要执行的任务(指针指向的下一个任务)
 	// 4.1 如果当前任务有子节点,则返回子节点
 	if (fiber.child) {
