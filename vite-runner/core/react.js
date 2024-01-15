@@ -111,20 +111,42 @@ function initChildren(fiber, children) {
 		prevChild = newFiber;
 	});
 }
+// 抽离创建dom节点函数
+function updateFunctionComponent(fiber) {
+	const children = [fiber.type(fiber.props)];
+	initChildren(fiber, children);
+}
+// 抽离处理props函数
+function updateHostComponent(fiber) {
+	// 1. 创建dom节点
+	if (!fiber.dom) {
+		const dom = (fiber.dom = createDom(fiber.type));
+		// fiber.parent.dom.append(dom); // 将创建的dom节点添加到父节点中,但是没渲染完所有dom节点就中途添加了
+		// 2. 处理props
+		updateProps(dom, fiber.props);
+	}
+	const children = fiber.props.children;
+	initChildren(fiber, children);
+}
 const performWorkOfUnit = (fiber) => {
 	// 检查一下fiber.type是否是一个函数组件
 	const isFunctionComponent = typeof fiber.type === "function";
-	// 因为我们的函数组件本身就自带dom,所以并不需要在对函数组件进行createDom的操作
-	if (!isFunctionComponent) {
-		// 在这个函数中我们要做的事情就是执行当前任务,也就是render函数所做的事情
-		// 1. 创建dom节点
-		if (!fiber.dom) {
-			const dom = (fiber.dom = createDom(fiber.type));
-			// fiber.parent.dom.append(dom); // 将创建的dom节点添加到父节点中,但是没渲染完所有dom节点就中途添加了
-			// 2. 处理props
-			updateProps(dom, fiber.props);
-		}
+	if (isFunctionComponent) {
+		updateFunctionComponent(fiber);
+	} else {
+		updateHostComponent(fiber);
 	}
+	// 因为我们的函数组件本身就自带dom,所以并不需要在对函数组件进行createDom的操作
+	// if (!isFunctionComponent) {
+	// 	// 在这个函数中我们要做的事情就是执行当前任务,也就是render函数所做的事情
+	// 	// 1. 创建dom节点
+	// 	if (!fiber.dom) {
+	// 		const dom = (fiber.dom = createDom(fiber.type));
+	// 		// fiber.parent.dom.append(dom); // 将创建的dom节点添加到父节点中,但是没渲染完所有dom节点就中途添加了
+	// 		// 2. 处理props
+	// 		updateProps(dom, fiber.props);
+	// 	}
+	// }
 
 	// 3. 转换链表 设置引用/指针(指向下一个任务)
 	// 在init子节点的时候把判断完的children传递过去,又因为我们的children默认是[],所以需要设置为数组类型的数据
