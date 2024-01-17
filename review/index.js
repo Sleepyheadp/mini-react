@@ -1,56 +1,3 @@
-// v1.0.0
-// 创建dom和文本节点赋值并插入到root节点中
-// const dom = document.createElement("div");
-// dom.id = "app";
-// // append和appendChild的区别
-// // getELementById和querySelector的区别
-// document.getElementById("root").append(dom);
-// // document.querySelector('#root').append(dom);
-
-// const textEl = document.createTextNode("");
-// textEl.nodeValue = `hello mini-react review  ${dom.id}`;
-// dom.append(textEl);
-// 模拟一个dom树的结构
-/**
- * <div id="app">
-			内容...
-		</div>
-		<div id="app2">
-			<div id="container">
-				<div id="title">标题2</div>
-				<div id="content">内容2</div>
-			</div>
-		</div>
- */
-// 引入虚拟dom
-// div: type id
-// text: type nodeValue
-// const textEl = {
-// 	type: "TEXT_ELEMENT",
-// 	props: {
-// 		nodeValue: "review",
-// 		children: [],
-// 	},
-// };
-// const el = {
-// 	type: "div",
-// 	props: {
-// 		id: "app", // el的ID
-// 		children: [textEl],
-// 	},
-// };
-
-// const dom = document.createElement(el.type);
-// dom.id = el.props.id;
-// document.querySelector("#root").append(dom);
-
-// // create textNode
-// const textNode = document.createTextNode("");
-// textNode.nodeValue = textEl.props.nodeValue;
-// dom.append(textNode);
-
-// 动态创建dom
-
 function createTextNode(nodeValue) {
 	return {
 		type: "TEXT_ELEMENT",
@@ -65,19 +12,46 @@ function createElement(type, props, ...children) {
 		type: type,
 		props: {
 			id: props.id,
-			children: children,
+			children: children.map((child) => {
+				return typeof child === "string" ? createTextNode(child) : child;
+			}),
 		},
 	};
 }
 
-// 创建文本
-const textEl = createTextNode("Hello mini-react review");
-// 创建dom
-const App = createElement("div", { id: "app" }, textEl);
+// 我们整个过程分三步走: 1. 创建元素 2. 给属性赋值 3. append添加到父组件
+function render(el, container) {
+	// 1. create dom
+	const dom =
+		el.type === "TEXT_ELEMENT"
+			? document.createTextNode("")
+			: document.createElement(el.type);
+	// 2. 给DOM赋值
 
-const dom = document.createElement(App.type);
-dom.id = App.props.id;
-document.querySelector("#root").append(dom);
-const textNode = document.createTextNode("");
-textNode.nodeValue = textEl.props.nodeValue;
-dom.append(textNode);
+	Object.keys(el.props).forEach((key) => {
+		if (key !== "children") {
+			// 为什么这里是dom[key]不是很理解,dom下面不是只有type和props吗,dom[id] dom[nodeValue]能取到对应的属性吗?
+			dom[key] = el.props[key];
+		}
+	});
+	// 2-2 处理children的情况(children的结构跟el的结构其实是一样的所以我们通过递归的方式处理就可以了)
+	el.props.children.forEach((child) => {
+		render(child, dom);
+	});
+	// 3. 将dom添加到父级元素
+	container.append(dom);
+}
+const App = createElement("div", { id: "app" }, "Hello mini-react review");
+
+// react 官方的形式: ReactDom.createRoot(document.getElementById(root)).render(<App/>)
+// render(App, document.querySelector("#root"));
+const ReactDom = {
+	createRoot(container) {
+		return {
+			render(App) {
+				render(App, container);
+			},
+		};
+	},
+};
+ReactDom.createRoot(document.querySelector("#root")).render(App);
