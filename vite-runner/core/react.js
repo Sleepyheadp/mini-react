@@ -114,7 +114,7 @@ function updateProps(dom, nextProps, prevProps) {
 		}
 	});
 }
-function initChildren(fiber, children) {
+function reconcileChildren(fiber, children) {
 	let oldFiber = fiber.alternate?.child;
 	let prevChild = null;
 	children.forEach((child, index) => {
@@ -158,7 +158,7 @@ function initChildren(fiber, children) {
 
 function updateFunctionComponent(fiber) {
 	const children = [fiber.type(fiber.props)];
-	initChildren(fiber, children);
+	reconcileChildren(fiber, children);
 }
 
 function updateHostComponent(fiber) {
@@ -167,7 +167,7 @@ function updateHostComponent(fiber) {
 		updateProps(dom, fiber.props, {});
 	}
 	const children = fiber.props.children;
-	initChildren(fiber, children);
+	reconcileChildren(fiber, children);
 }
 
 const performWorkOfUnit = (fiber) => {
