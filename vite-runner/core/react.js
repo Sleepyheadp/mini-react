@@ -85,13 +85,18 @@ function createDom(type) {
 function updateProps(dom, props) {
 	Object.keys(props).forEach((key) => {
 		if (key !== "children") {
-			dom[key] = props[key];
+			if(key.startsWith('on')){
+				const eventType = key.slice(2).toLowerCase();
+				dom.addEventListener(eventType, props[key]); // 这里的props[key]就是我们onclike的回调函数clickMe
+			}else{
+				dom[key] = props[key];
+			}
 		}
 	});
 }
 // 转换链表
 function initChildren(fiber, children) {
-	// const children = fiber.props.children;
+	// const eventType = fiber.props
 	let prevChild = null;
 	children.forEach((child, index) => {
 		// 创建一个新的fiber节点,给其设置相关的属性
@@ -150,10 +155,10 @@ const performWorkOfUnit = (fiber) => {
 
 	// 3. 转换链表 设置引用/指针(指向下一个任务)
 	// 在init子节点的时候把判断完的children传递过去,又因为我们的children默认是[],所以需要设置为数组类型的数据
-	const children = isFunctionComponent
-		? [fiber.type(fiber.props)]
-		: fiber.props.children;
-	initChildren(fiber, children);
+	// const children = isFunctionComponent
+	// 	? [fiber.type(fiber.props)]
+	// 	: fiber.props.children;
+	// initChildren(fiber, children);
 	// 4. 返回下一个要执行的任务(指针指向的下一个任务)
 	// 4.1 如果当前任务有子节点,则返回子节点
 	if (fiber.child) {
