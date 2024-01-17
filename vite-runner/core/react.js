@@ -27,17 +27,18 @@ function createElement(type, props, ...children) {
 // v3:动态创建dom节点
 function render(el, container) {
 	// 渲染的时候我们需要将vdom转换为dom节点
-	nextWorkOfUnit = {
+	wipRoot = {
 		dom: container,
 		props: {
 			children: [el],
 		},
 	};
-	rootDom = nextWorkOfUnit; // 根节点赋值
+	nextWorkOfUnit = wipRoot;
 }
 
 // 首先我们定义一个当前要执行的任务
-let rootDom = null; // dom树的根节点
+// work in progress
+let wipRoot = null; // dom树的根节点
 let currentRoot = null;
 let nextWorkOfUnit = null;
 const workLoop = (idleDeadline) => {
@@ -48,7 +49,7 @@ const workLoop = (idleDeadline) => {
 		nextWorkOfUnit = performWorkOfUnit(nextWorkOfUnit);
 		hasTimeEmpty = idleDeadline.timeRemaining() < 1;
 	}
-	if (!nextWorkOfUnit && rootDom) {
+	if (!nextWorkOfUnit && wipRoot) {
 		// 说明dom树已经渲染完成,这个时候我们就可以将fiber树转换为dom树,可以append到根节点了
 		commitRoot();
 	}
@@ -56,9 +57,9 @@ const workLoop = (idleDeadline) => {
 };
 
 function commitRoot() {
-	commitWork(rootDom.child);
-	currentRoot = rootDom;
-	rootDom = null;
+	commitWork(wipRoot.child);
+	currentRoot = wipRoot;
+	wipRoot = null;
 }
 
 function commitWork(fiber) {
@@ -189,12 +190,12 @@ const performWorkOfUnit = (fiber) => {
 requestIdleCallback(workLoop);
 
 function update() {
-	nextWorkOfUnit = {
+	wipRoot = {
 		dom: currentRoot.dom,
 		props: currentRoot.props,
 		alternate: currentRoot, // 把新dom树指向老的dom树
 	};
-	rootDom = nextWorkOfUnit;
+	nextWorkOfUnit = wipRoot;
 }
 
 const React = {
