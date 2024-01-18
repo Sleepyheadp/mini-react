@@ -41,6 +41,7 @@ function render(el, container) {
 let wipRoot = null; // dom树的根节点
 let currentRoot = null;
 let nextWorkOfUnit = null;
+let deletions = []; // 所有的删除节点
 const workLoop = (idleDeadline) => {
 	let hasTimeEmpty = false; // 默认没有空闲时间
 	while (!hasTimeEmpty && nextWorkOfUnit) {
@@ -57,11 +58,16 @@ const workLoop = (idleDeadline) => {
 };
 
 function commitRoot() {
+	// 我们在这里进行删除的统一处理
+	deletions.forEach(commitDeletion);
 	commitWork(wipRoot.child);
 	currentRoot = wipRoot;
 	wipRoot = null;
+	deletions = [];
 }
-
+function commitDeletion(fiber) {
+	fiber.parent.dom.removeChild(fiber.dom);
+}
 function commitWork(fiber) {
 	if (!fiber) return; // 如果后续没有任务了,则直接返回
 	let fiberParent = fiber.parent;
@@ -120,6 +126,7 @@ function reconcileChildren(fiber, children) {
 	children.forEach((child, index) => {
 		const isSameType = oldFiber && oldFiber.type === child.type;
 		let newFiber;
+		// 判断是否是相同类型
 		if (isSameType) {
 			// update
 			newFiber = {
@@ -142,6 +149,10 @@ function reconcileChildren(fiber, children) {
 				dom: null,
 				effectTag: "placement", // 替换
 			};
+			// 进行删除操作
+			if (oldFiber) {
+				deletions.push(oldFiber);
+			}
 		}
 		// 把旧的dom树更新为兄弟节点
 		if (oldFiber) {
