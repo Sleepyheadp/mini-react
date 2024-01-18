@@ -65,8 +65,17 @@ function commitRoot() {
 	wipRoot = null;
 	deletions = [];
 }
+// del dom
 function commitDeletion(fiber) {
-	fiber.parent.dom.removeChild(fiber.dom);
+	if (fiber.dom) {
+		let fiberParent = fiber.parent;
+		while (!fiberParent.dom) {
+			fiberParent = fiberParent.parent;
+		}
+		fiberParent.dom.removeChild(fiber.dom);
+	} else {
+		commitDeletion(fiber.child);
+	}
 }
 function commitWork(fiber) {
 	if (!fiber) return; // 如果后续没有任务了,则直接返回
