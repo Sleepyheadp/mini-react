@@ -1,5 +1,8 @@
 import react from "./react.js";
-const reactDom = {
+// reactDom是一个对象,可以通过obj.sth的方式进行获取属性,
+// 函数的话必须要有返回值,这里的createRoot返回了一个函数,
+// 因为我们也可以通过createRoot.render()的方式
+const ReactDOM = {
 	createRoot(container) {
 		return {
 			render(App) {
@@ -8,4 +11,5 @@ const reactDom = {
 		};
 	},
 };
-export default reactDom;
+
+export default ReactDOM;

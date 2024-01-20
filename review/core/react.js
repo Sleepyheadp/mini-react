@@ -41,8 +41,8 @@ function render(el, container) {
 	// 3. 将dom添加到父级元素
 	container.append(dom);
 }
-const react = {
+const React = {
 	render,
 	createElement,
 };
-export default react;
+export default React;
