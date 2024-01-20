@@ -20,6 +20,7 @@ function createElement(type, props, ...children) {
 }
 
 // 我们整个过程分三步走: 1. 创建元素 2. 给属性赋值 3. append添加到父组件
+let root = null;
 function render(el, container) {
 	// 这里的container就是根节点,el是我们创建的dom元素
 	nextWorkOfUnit = {
@@ -28,10 +29,11 @@ function render(el, container) {
 			children: [el],
 		},
 	};
+	root = nextWorkOfUnit;
 }
 
 // 任务调度器
-let nextWorkOfUnit = null;
+let nextWorkOfUnit = null; // 每个节点 也就是任务
 function workloop(idleDeadLine) {
 	let shouldYield = false;
 	while (!shouldYield && nextWorkOfUnit) {
@@ -39,13 +41,30 @@ function workloop(idleDeadLine) {
 		nextWorkOfUnit = performWorkOfUnit(nextWorkOfUnit);
 		shouldYield = idleDeadLine.timeRemaining() < 1;
 	}
+
+	// 我们需要在所有的任务完成后将节点append,且只执行一次
+	if (!nextWorkOfUnit && root) {
+		commitRoot();
+	}
 	requestIdleCallback(workloop);
 }
+function commitRoot() {
+	commitWork(root.child);
+	root = null;
+}
+function commitWork(fiber) {
+	if (!fiber) return;
+	fiber.parent.dom.append(fiber.dom);
+	commitWork(fiber.child);
+	commitWork(fiber.sibling);
+}
+
 function createDom(type) {
 	return type === "TEXT_ELEMENT"
 		? document.createTextNode("")
 		: document.createElement(type);
 }
+
 function updateProps(dom, props) {
 	Object.keys(props).forEach((key) => {
 		if (key !== "children") {
@@ -54,6 +73,7 @@ function updateProps(dom, props) {
 		}
 	});
 }
+
 function initChildren(fiber) {
 	const children = fiber.props.children;
 	let prevChild = null;
@@ -79,7 +99,7 @@ function performWorkOfUnit(fiber) {
 	if (!fiber.dom) {
 		const dom = (fiber.dom = createDom(fiber.type));
 		// 疑问:为什么是parent
-		fiber.parent.dom.append(dom);
+		// fiber.parent.dom.append(dom);
 		updateProps(dom, fiber.props);
 	}
 	// 转换为链表 就是去处理子节点和指向问题 fiber传参的初始值就是nextWorkOfUnit
