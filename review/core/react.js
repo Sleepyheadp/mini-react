@@ -9,9 +9,9 @@ function createTextNode(nodeValue) {
 }
 function createElement(type, props, ...children) {
 	return {
-		type: type,
+		type,
 		props: {
-			id: props.id,
+			...props,
 			children: children.map((child) => {
 				return typeof child === "string" ? createTextNode(child) : child;
 			}),
@@ -21,37 +21,79 @@ function createElement(type, props, ...children) {
 
 // 我们整个过程分三步走: 1. 创建元素 2. 给属性赋值 3. append添加到父组件
 function render(el, container) {
-	// 1. create dom
-	const dom =
-		el.type === "TEXT_ELEMENT"
-			? document.createTextNode("")
-			: document.createElement(el.type);
-	// 2. 给DOM赋值
-
-	Object.keys(el.props).forEach((key) => {
-		if (key !== "children") {
-			// 为什么这里是dom[key]不是很理解,dom下面不是只有type和props吗,dom[id] dom[nodeValue]能取到对应的属性吗?
-			dom[key] = el.props[key];
-		}
-	});
-	// 2-2 处理children的情况(children的结构跟el的结构其实是一样的所以我们通过递归的方式处理就可以了)
-	el.props.children.forEach((child) => {
-		render(child, dom);
-	});
-	// 3. 将dom添加到父级元素
-	container.append(dom);
+	// 这里的container就是根节点,el是我们创建的dom元素
+	nextWorkOfUnit = {
+		dom: container,
+		props: {
+			children: [el],
+		},
+	};
 }
 
 // 任务调度器
+let nextWorkOfUnit = null;
 function workloop(idleDeadLine) {
 	let shouldYield = false;
-	while (!shouldYield) {
+	while (!shouldYield && nextWorkOfUnit) {
 		// 执行render
-		console.log("task", idleDeadLine.timeRemaining());
+		nextWorkOfUnit = performWorkOfUnit(nextWorkOfUnit);
 		shouldYield = idleDeadLine.timeRemaining() < 1;
 	}
-	// requestIdleCallback(workloop);
+	requestIdleCallback(workloop);
 }
+function createDom(type) {
+	return type === "TEXT_ELEMENT"
+		? document.createTextNode("")
+		: document.createElement(type);
+}
+function updateProps(dom, props) {
+	Object.keys(props).forEach((key) => {
+		if (key !== "children") {
+			// 为什么这里是dom[key]不是很理解,dom下面不是只有type和props吗,dom[id] dom[nodeValue]能取到对应的属性吗?
+			dom[key] = props[key];
+		}
+	});
+}
+function initChildren(fiber) {
+	const children = fiber.props.children;
+	let prevChild = null;
+	children.forEach((child, index) => {
+		const newFiber = {
+			type: child.type,
+			props: child.props,
+			child: null,
+			parent: fiber,
+			sibling: null,
+			dom: null,
+		};
+		if (index === 0) {
+			// 说明是第一个子节点
+			fiber.child = newFiber;
+		} else {
+			prevChild.sibling = newFiber;
+		}
+		prevChild = newFiber;
+	});
+}
+function performWorkOfUnit(fiber) {
+	if (!fiber.dom) {
+		const dom = (fiber.dom = createDom(fiber.type));
+		// 疑问:为什么是parent
+		fiber.parent.dom.append(dom);
+		updateProps(dom, fiber.props);
+	}
+	// 转换为链表 就是去处理子节点和指向问题 fiber传参的初始值就是nextWorkOfUnit
+	initChildren(fiber);
+	// 这个时候第一层已经处理完了,这个时候要返回后续要处理的任务,也就是向下遍历
+	if (fiber.child) {
+		return fiber.child;
+	}
+	if (fiber.sibling) {
+		return fiber.sibling;
+	}
+	return fiber.parent?.sibling; // 没有就返回父级的兄弟节点 如果有的话
+}
+
 requestIdleCallback(workloop);
 
 const React = {
