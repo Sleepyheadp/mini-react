@@ -4,9 +4,13 @@ let id = 0;
 let isShow = false;
 function Counter() {
 	// const foo = <div>foo</div>;
-	function Foo() {
-		return <div>foo</div>;
-	}
+	// 为什么这里使用func comp的时候更新没问题,多余的节点也删除了
+	const foo = (
+		<div>
+			foo
+			<div>child</div>{" "}
+		</div>
+	);
 	const bar = <div>bar</div>;
 	// 这个时候已经绑定了事件,但是为什么没有打印log呢?
 	// 这是因为我们没有在react.js中进行处理,它不能够识别clike这个事件
@@ -24,7 +28,7 @@ function Counter() {
 			<button id={id} onClick={handleClick}>
 				count:{count}
 			</button>
-			<div>{isShow ? bar : <Foo />}</div>
+			<div>{isShow ? bar : foo}</div>
 			<button onClick={handleShow}>Toggle</button>
 		</div>
 	);
