@@ -41,6 +41,19 @@ function render(el, container) {
 	// 3. 将dom添加到父级元素
 	container.append(dom);
 }
+
+// 任务调度器
+function workloop(idleDeadLine) {
+	let shouldYield = false;
+	while (!shouldYield) {
+		// 执行render
+		console.log("task", idleDeadLine.timeRemaining());
+		shouldYield = idleDeadLine.timeRemaining() < 1;
+	}
+	// requestIdleCallback(workloop);
+}
+requestIdleCallback(workloop);
+
 const React = {
 	render,
 	createElement,
