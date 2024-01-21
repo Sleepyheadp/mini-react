@@ -14,7 +14,6 @@ function createElement(type, props, ...children) {
 		props: {
 			...props,
 			children: children.map((child) => {
-				console.log(child);
 				let isTextNode = typeof child === "string" || typeof child === "number";
 				return isTextNode ? createTextNode(child) : child;
 			}),
@@ -122,28 +121,52 @@ function initChildren(fiber, children) {
 		prevChild = newFiber;
 	});
 }
-function performWorkOfUnit(fiber) {
-	const isFounctionComponent = typeof fiber.type === "function";
-	if (!isFounctionComponent) {
-		if (!fiber.dom) {
-			const dom = (fiber.dom = createDom(fiber.type));
-			// 疑问:为什么是parent
-			// fiber.parent.dom.append(dom);
-			updateProps(dom, fiber.props);
-		}
-	}
-	// 转换为链表 就是去处理子节点和指向问题 fiber传参的初始值就是nextWorkOfUnit
-	const children = isFounctionComponent
-		? [fiber.type(fiber.props)]
-		: fiber.props.children;
+// 抽离处理函数组件和普通dom节点的逻辑
+function updateFunctionComponent(fiber) {
+	// 这里不需要处理dom,函数组件并没有dom属性,只需要处理children
+	const children = [fiber.type(fiber.props)];
 	initChildren(fiber, children);
-	// 这个时候第一层已经处理完了,这个时候要返回后续要处理的任务,也就是向下遍历
+}
+function updateHostComponent(fiber) {
+	// 处理dom
+	if (!fiber.dom) {
+		// 1. create dom
+		const dom = (fiber.dom = createDom(fiber.type));
+		// 2. 处理props
+		updateProps(dom, fiber.props);
+	}
+	// 处理children
+	const children = fiber.props.children;
+	initChildren(fiber, children);
+}
+function performWorkOfUnit(fiber) {
+	const isFunctionComponent = typeof fiber.type === "function";
+	if (isFunctionComponent) {
+		updateFunctionComponent(fiber);
+	} else {
+		updateHostComponent(fiber);
+	}
+
+	// if (!isFounctionComponent) {
+	// 	if (!fiber.dom) {
+	// 		// 1. create dom
+	// 		const dom = (fiber.dom = createDom(fiber.type));
+	// 		// 2. 处理props
+	// 		updateProps(dom, fiber.props);
+	// 	}
+	// }
+	// // 3. 转换为链表 就是去处理子节点和指向问题 fiber传参的初始值就是nextWorkOfUnit
+	// const children = isFounctionComponent
+	// 	? [fiber.type(fiber.props)]
+	// 	: fiber.props.children;
+	// initChildren(fiber, children);
+	// // 这个时候第一层已经处理完了,这个时候要返回后续要处理的任务,也就是向下遍历
 	if (fiber.child) {
 		return fiber.child;
 	}
-	if (fiber.sibling) {
-		return fiber.sibling;
-	}
+	// if (fiber.sibling) {
+	// 	return fiber.sibling;
+	// }
 	// 当渲染多个counter组件的时候,我们直接返回了上一级的sibling,但是如果上一级也没有sibling的话,就会报错
 	// 解决方案: 循环往上找,直到找到有sibling的父节点
 	// 这里的fiber参数就是counter函数组件
