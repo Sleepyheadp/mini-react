@@ -14,7 +14,8 @@ function createElement(type, props, ...children) {
 		props: {
 			...props,
 			children: children.map((child) => {
-				let isTextNode = typeof child === "string" || typeof child === "number";
+				const isTextNode =
+					typeof child === "string" || typeof child === "number";
 				return isTextNode ? createTextNode(child) : child;
 			}),
 		},
@@ -22,20 +23,22 @@ function createElement(type, props, ...children) {
 }
 
 // 我们整个过程分三步走: 1. 创建元素 2. 给属性赋值 3. append添加到父组件
-let root = null;
+
 function render(el, container) {
 	// 这里的container就是根节点,el是我们创建的dom元素
-	nextWorkOfUnit = {
+	wipRoot = {
 		dom: container,
 		type: "div", // 给根节点也加一个type属性,虽然后续用不到它,加不加都行
 		props: {
 			children: [el],
 		},
 	};
-	root = nextWorkOfUnit;
+	nextWorkOfUnit = wipRoot;
 }
 
-// 任务调度器
+// 任务调度器 work in progress
+let wipRoot = null;
+let currentRoot = null;
 let nextWorkOfUnit = null; // 每个节点 也就是任务
 function workloop(idleDeadLine) {
 	let shouldYield = false;
@@ -46,7 +49,7 @@ function workloop(idleDeadLine) {
 	}
 
 	// 我们需要在所有的任务完成后将节点append
-	if (!nextWorkOfUnit && root) {
+	if (!nextWorkOfUnit && wipRoot) {
 		commitRoot();
 	}
 	requestIdleCallback(workloop);
@@ -55,27 +58,26 @@ function workloop(idleDeadLine) {
 // 1. 在提交之前把root赋值为null
 // 2. 加判断条件,当root为null时则不进行提交
 function commitRoot() {
-	commitWork(root.child);
-	root = null;
+	commitWork(wipRoot.child);
+	// 我们在形成新的链表结构后会把当前的链表结构赋值给新的root节点
+	currentRoot = wipRoot;
+	wipRoot = null;
 }
 // 没看懂,还能递归这样处理子节点,而且fiber不是根节点了吗,为什么还要append到parent?
 function commitWork(fiber) {
 	if (!fiber) return;
-	// 函数组件里并没有dom结构,所以需要一直往上找,
-	// 问题:为什么要counter函数组件的上一级是#app,要把dom添加到#app上吗?
-	// 答: 我们在这里是按顺序生成链表,counter下的div节点需要添加到父级的dom上
-	// 又因为函数组件内部并没有dom属性,所以继续往上找有dom属性的节点
 	let fiberParent = fiber.parent;
-	// 问题:这个地方是不是可以优化一下,那如果父级节点还是没有dom结构呢(嵌套),这样赋值不还是报错?
 	while (!fiberParent.dom) {
-		// counter函数组件parent是#app,它才有dom结构
 		fiberParent = fiberParent.parent;
 	}
-	// 当前处理节点是否有dom属性,有的话就添加到父级dom上
-	// 函数组件没有dom属性不需要进行添加dom
-	if (fiber.dom) {
-		fiberParent.dom.append(fiber.dom);
+	if (fiber.effectTag === "update") {
+		updateProps(fiber.dom, fiber.props, fiber.alternate?.props);
+	} else if (fiber.effectTag === "placement") {
+		if (fiber.dom) {
+			fiberParent.dom.append(fiber.dom);
+		}
 	}
+
 	commitWork(fiber.child);
 	commitWork(fiber.sibling);
 }
@@ -86,36 +88,83 @@ function createDom(type) {
 		: document.createElement(type);
 }
 
-function updateProps(dom, props) {
-	Object.keys(props).forEach((key) => {
+function updateProps(dom, nextProps, prevProps) {
+	// Object.keys(props).forEach((key) => {
+	// 	if (key !== "children") {
+	// 		// 为什么这里是dom[key]不是很理解,dom下面不是只有type和props吗,dom[id] dom[nodeValue]能取到对应的属性吗?
+	// 		// 在更新节点的时候给dom添加事件
+	// 		if (key.startsWith("on")) {
+	// 			const eventType = key.slice(2).toLowerCase();
+	// 			console.log(eventType);
+	// 			// 绑定事件
+	// 			dom.addEventListener(eventType, props[key]);
+	// 		} else {
+	// 			dom[key] = props[key];
+	// 		}
+	// 	}
+	// });
+	// 重构updateProps 分情况处理
+	// 1. old 有 new 没有 -> 删除
+	Object.keys(prevProps).forEach((key) => {
 		if (key !== "children") {
-			// 为什么这里是dom[key]不是很理解,dom下面不是只有type和props吗,dom[id] dom[nodeValue]能取到对应的属性吗?
-			// 在更新节点的时候给dom添加事件
-			if (key.startsWith("on")) {
-				const eventType = key.slice(2).toLowerCase();
-				console.log(eventType);
-				// 绑定事件
-				dom.addEventListener(eventType, props[key]);
-			} else {
-				dom[key] = props[key];
+			if (!(key in nextProps)) {
+				dom.removeAttribute(key);
+			}
+		}
+	});
+	// 2. new 有 old 没有 -> 更新
+	// 3. new 有 old 有  -> 更新
+	Object.keys(nextProps).forEach((key) => {
+		if (key !== "children") {
+			if (nextProps[key] !== prevProps[key]) {
+				if (key.startsWith("on")) {
+					const eventType = key.slice(2).toLowerCase();
+					dom.removeEventListener(eventType, prevProps[key]);
+					dom.addEventListener(eventType, nextProps[key]);
+				} else {
+					dom[key] = nextProps[key];
+				}
 			}
 		}
 	});
 }
 
-function initChildren(fiber, children) {
+function reconcileChildren(fiber, children) {
 	// 因为我们的函数组件是在type()函数中返回dom,跟我们之前dom的结构并不一样所以要分开处理
 	// const children = fiber.props.children;
+	// 不懂啊,能直接给fiber加alternate属性吗?这里的fiber是新的还是旧的?
+	let oldFiber = fiber.alternate?.child;
 	let prevChild = null;
 	children.forEach((child, index) => {
-		const newFiber = {
-			type: child.type,
-			props: child.props,
-			child: null,
-			parent: fiber,
-			sibling: null,
-			dom: null,
-		};
+		// 分情况进行判断,如果对比的type相同则进行更新,不同则替换
+		const isSameType = oldFiber && oldFiber.type === child.type;
+		let newFiber;
+		if (isSameType) {
+			newFiber = {
+				type: child.type,
+				props: child.props,
+				child: null,
+				parent: fiber,
+				sibling: null,
+				dom: oldFiber.dom, // 更新用老的dom
+				effectTag: "update",
+				alternate: oldFiber,
+			};
+		} else {
+			newFiber = {
+				type: child.type,
+				props: child.props,
+				child: null,
+				parent: fiber,
+				sibling: null,
+				dom: null,
+				effectTag: "placement",
+			};
+		}
+		// 不理解, 意思是当index=1时也就是处理兄弟节点时更新oldFiber
+		if (oldFiber) {
+			oldFiber = oldFiber.sibling;
+		}
 		if (index === 0) {
 			// 说明是第一个子节点
 			fiber.child = newFiber;
@@ -129,7 +178,7 @@ function initChildren(fiber, children) {
 function updateFunctionComponent(fiber) {
 	// 这里不需要处理dom,函数组件并没有dom属性,只需要处理children
 	const children = [fiber.type(fiber.props)];
-	initChildren(fiber, children);
+	reconcileChildren(fiber, children);
 }
 function updateHostComponent(fiber) {
 	// 处理dom
@@ -137,11 +186,11 @@ function updateHostComponent(fiber) {
 		// 1. create dom
 		const dom = (fiber.dom = createDom(fiber.type));
 		// 2. 处理props
-		updateProps(dom, fiber.props);
+		updateProps(dom, fiber.props, {}); // dom prevProps nextProps
 	}
 	// 处理children
 	const children = fiber.props.children;
-	initChildren(fiber, children);
+	reconcileChildren(fiber, children);
 }
 function performWorkOfUnit(fiber) {
 	// console.log(fiber);
@@ -166,9 +215,21 @@ function performWorkOfUnit(fiber) {
 	}
 }
 
+// update : create new root
+// 这个新的root节点是老节点在形成链式结构时赋值的,因此我们不需要给他传值
 requestIdleCallback(workloop);
 
+function update() {
+	nextWorkOfUnit = {
+		dom: currentRoot.dom,
+		props: currentRoot.props,
+		alternate: currentRoot,
+	};
+	wipRoot = nextWorkOfUnit;
+}
+
 const React = {
+	update,
 	render,
 	createElement,
 };
