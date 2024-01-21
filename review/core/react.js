@@ -7,13 +7,16 @@ function createTextNode(nodeValue) {
 		},
 	};
 }
+
 function createElement(type, props, ...children) {
 	return {
 		type,
 		props: {
 			...props,
 			children: children.map((child) => {
-				return typeof child === "string" ? createTextNode(child) : child;
+				console.log(child);
+				let isTextNode = typeof child === "string" || typeof child === "number";
+				return isTextNode ? createTextNode(child) : child;
 			}),
 		},
 	};
@@ -130,7 +133,9 @@ function performWorkOfUnit(fiber) {
 		}
 	}
 	// 转换为链表 就是去处理子节点和指向问题 fiber传参的初始值就是nextWorkOfUnit
-	const children = isFounctionComponent ? [fiber.type()] : fiber.props.children;
+	const children = isFounctionComponent
+		? [fiber.type(fiber.props)]
+		: fiber.props.children;
 	initChildren(fiber, children);
 	// 这个时候第一层已经处理完了,这个时候要返回后续要处理的任务,也就是向下遍历
 	if (fiber.child) {
@@ -139,7 +144,14 @@ function performWorkOfUnit(fiber) {
 	if (fiber.sibling) {
 		return fiber.sibling;
 	}
-	return fiber.parent?.sibling; // 没有就返回父级的兄弟节点 如果有的话
+	// 当渲染多个counter组件的时候,我们直接返回了上一级的sibling,但是如果上一级也没有sibling的话,就会报错
+	// 解决方案: 循环往上找,直到找到有sibling的父节点
+	// 这里的fiber参数就是counter函数组件
+	let nextFiber = fiber;
+	while (nextFiber) {
+		if (nextFiber.sibling) return nextFiber.sibling; // 没有就返回父级的兄弟节点 如果有的话
+		nextFiber = nextFiber.parent;
+	}
 }
 
 requestIdleCallback(workloop);
