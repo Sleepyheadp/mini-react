@@ -40,7 +40,8 @@ function render(el, container) {
 let wipRoot = null;
 let currentRoot = null;
 let nextWorkOfUnit = null; // 每个节点 也就是任务
-function workloop(idleDeadLine) {
+let deletions = [];
+function workLoop(idleDeadLine) {
 	let shouldYield = false;
 	while (!shouldYield && nextWorkOfUnit) {
 		// 执行render
@@ -52,20 +53,38 @@ function workloop(idleDeadLine) {
 	if (!nextWorkOfUnit && wipRoot) {
 		commitRoot();
 	}
-	requestIdleCallback(workloop);
+	requestIdleCallback(workLoop);
 }
 // 怎么让他只提交一次呢?
 // 1. 在提交之前把root赋值为null
 // 2. 加判断条件,当root为null时则不进行提交
 function commitRoot() {
+	// forEach参数里还能是函数形式 ()=>{} 本来就是一个箭头函数
+	deletions.forEach(commitDeletion);
 	commitWork(wipRoot.child);
 	// 我们在形成新的链表结构后会把当前的链表结构赋值给新的root节点
 	currentRoot = wipRoot;
 	wipRoot = null;
+	deletions = [];
+}
+function commitDeletion(fiber) {
+	if (fiber.dom) {
+		let fiberParent = fiber.parent;
+		while (!fiberParent.dom) {
+			fiberParent = fiberParent.parent;
+		}
+		// 把当前要删除的节点传递给它
+		// removeChild和removeAttribute的区别
+		fiberParent.dom.removeChild(fiber.dom);
+	} else {
+		commitDeletion(fiber.child);
+	}
 }
 // 没看懂,还能递归这样处理子节点,而且fiber不是根节点了吗,为什么还要append到parent?
 function commitWork(fiber) {
+	// 这里的fiber是所有的子节点
 	if (!fiber) return;
+	// 如果是函数组件的话父节点不一定有dom属性,要继续往上找
 	let fiberParent = fiber.parent;
 	while (!fiberParent.dom) {
 		fiberParent = fiberParent.parent;
@@ -105,6 +124,7 @@ function updateProps(dom, nextProps, prevProps) {
 	// });
 	// 重构updateProps 分情况处理
 	// 1. old 有 new 没有 -> 删除
+	// 遍历老的节点,当老的节点有但是新的没有就进行删除
 	Object.keys(prevProps).forEach((key) => {
 		if (key !== "children") {
 			if (!(key in nextProps)) {
@@ -114,6 +134,7 @@ function updateProps(dom, nextProps, prevProps) {
 	});
 	// 2. new 有 old 没有 -> 更新
 	// 3. new 有 old 有  -> 更新
+	// 老的节点和新的节点不一样
 	Object.keys(nextProps).forEach((key) => {
 		if (key !== "children") {
 			if (nextProps[key] !== prevProps[key]) {
@@ -129,6 +150,7 @@ function updateProps(dom, nextProps, prevProps) {
 	});
 }
 
+// 处理根节点下的子节点 reconcile /ˈrekənsaɪl/ 使和好;使一致
 function reconcileChildren(fiber, children) {
 	// 因为我们的函数组件是在type()函数中返回dom,跟我们之前dom的结构并不一样所以要分开处理
 	// const children = fiber.props.children;
@@ -160,6 +182,9 @@ function reconcileChildren(fiber, children) {
 				dom: null,
 				effectTag: "placement",
 			};
+			if (oldFiber) {
+				deletions.push(oldFiber);
+			}
 		}
 		// 不理解, 意思是当index=1时也就是处理兄弟节点时更新oldFiber
 		if (oldFiber) {
@@ -217,15 +242,15 @@ function performWorkOfUnit(fiber) {
 
 // update : create new root
 // 这个新的root节点是老节点在形成链式结构时赋值的,因此我们不需要给他传值
-requestIdleCallback(workloop);
+requestIdleCallback(workLoop);
 
 function update() {
-	nextWorkOfUnit = {
+	wipRoot = {
 		dom: currentRoot.dom,
 		props: currentRoot.props,
 		alternate: currentRoot,
 	};
-	wipRoot = nextWorkOfUnit;
+	nextWorkOfUnit = wipRoot;
 }
 
 const React = {
