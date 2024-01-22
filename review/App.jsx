@@ -38,7 +38,9 @@ function ToggleBar() {
 	}
 	return (
 		<div>
-			{isShow ? foo : bar}
+			{/* {isShow ? foo : bar}  */}
+			{/* isShow是false类型的,所以报错了 */}
+			{(isShow && bar) || (!isShow && foo)}
 			<button onClick={toggle}>toggle</button>
 		</div>
 	);

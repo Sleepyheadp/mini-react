@@ -14,6 +14,7 @@ function createElement(type, props, ...children) {
 		props: {
 			...props,
 			children: children.map((child) => {
+				console.log("child", child);
 				const isTextNode =
 					typeof child === "string" || typeof child === "number";
 				return isTextNode ? createTextNode(child) : child;
@@ -159,15 +160,18 @@ function reconcileChildren(fiber, children) {
 				alternate: oldFiber,
 			};
 		} else {
-			newFiber = {
-				type: child.type,
-				props: child.props,
-				child: null,
-				parent: fiber,
-				sibling: null,
-				dom: null,
-				effectTag: "placement",
-			};
+			// isShow的值为false
+			if (child) {
+				newFiber = {
+					type: child.type,
+					props: child.props,
+					child: null,
+					parent: fiber,
+					sibling: null,
+					dom: null,
+					effectTag: "placement",
+				};
+			}
 			if (oldFiber) {
 				deletions.push(oldFiber);
 			}
@@ -182,7 +186,9 @@ function reconcileChildren(fiber, children) {
 		} else {
 			prevChild.sibling = newFiber;
 		}
-		prevChild = newFiber;
+		if (newFiber) {
+			prevChild = newFiber;
+		}
 	});
 	// 在处理完子节点的时候打印一下oldFiber看一下
 	// console.log(oldFiber);
