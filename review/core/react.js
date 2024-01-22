@@ -204,9 +204,12 @@ function reconcileChildren(fiber, children) {
 }
 // 抽离处理函数组件和普通dom节点的逻辑
 function updateFunctionComponent(fiber) {
+	stateHooks = [];
+	stateHookIndex = 0;
 	wipFiber = fiber;
-	// 这里不需要处理dom,函数组件并没有dom属性,只需要处理children
+
 	const children = [fiber.type(fiber.props)];
+
 	reconcileChildren(fiber, children);
 }
 function updateHostComponent(fiber) {
@@ -264,8 +267,44 @@ function update() {
 	};
 }
 
+let stateHooks;
+let stateHookIndex;
+function useState(initial) {
+	let currentFiber = wipFiber;
+	const oldHook = currentFiber.alternate?.stateHooks[stateHookIndex];
+	const stateHook = {
+		state: oldHook ? oldHook.state : initial,
+		queue: oldHook ? oldHook.queue : [],
+	};
+
+	stateHook.queue.forEach((action) => {
+		stateHook.state = action(stateHook.state);
+	});
+
+	stateHook.queue = [];
+
+	stateHookIndex++;
+	stateHooks.push(stateHook);
+
+	currentFiber.stateHooks = stateHooks;
+	// 修改值
+	function setState(action) {
+		stateHook.queue.push(action);
+
+		wipRoot = {
+			...currentFiber,
+			alternate: currentFiber,
+		};
+
+		nextWorkOfUnit = wipRoot;
+	}
+
+	return [stateHook.state, setState];
+}
+
 const React = {
 	update,
+	useState,
 	render,
 	createElement,
 };

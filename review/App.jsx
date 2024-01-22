@@ -5,20 +5,24 @@ let count = 10;
 let count_one = 1;
 let count_two = 2;
 
-function Counter({ num }) {
-	const update = React.update();
+function Counter() {
+	const [count, setCount] = React.useState(10);
+	const [name, setName] = React.useState("Tom");
 	function handleClick() {
-		console.log("click");
-		count++;
-		update();
-		// React.update();
+		setCount((count) => count + 1);
+	}
+	function changeName() {
+		setName((name) => "Jerry");
 	}
 
 	return (
 		<div>
-			<div id="count">
-				num_props:{num}; count:{count}
-				<button onClick={handleClick}>clikeme</button>
+			<div>
+				<h2>Counter</h2>
+				count:{count}
+				<button onClick={handleClick}>addCount</button>
+				name:{name}
+				<button onClick={changeName}>changeName</button>
 			</div>
 		</div>
 	);
@@ -84,13 +88,14 @@ function App() {
 	return (
 		<div id="app">
 			Hello mini-react
-			<Counter num={10}></Counter>
-			{/* <Counter num={20}></Counter> */}
 			<hr />
 			<ToggleBar></ToggleBar>
 			<hr />
 			<CounterOne></CounterOne>
 			<CounterTwo></CounterTwo>
+			<hr />
+			<Counter></Counter>
+			{/* <Counter></Counter> */}
 		</div>
 	);
 }
