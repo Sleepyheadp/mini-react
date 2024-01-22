@@ -49,7 +49,6 @@ function workLoop(idleDeadLine) {
 		nextWorkOfUnit = performWorkOfUnit(nextWorkOfUnit);
 		// 判断
 		if (wipRoot?.sibling?.type === nextWorkOfUnit?.type) {
-			console.log(wipRoot, nextWorkOfUnit);
 			// 我们把下一个指向的节点设为null,则链表创建完成不再向下执行
 			nextWorkOfUnit = null;
 		}
@@ -196,8 +195,6 @@ function reconcileChildren(fiber, children) {
 			prevChild = newFiber;
 		}
 	});
-	// 在处理完子节点的时候打印一下oldFiber看一下
-	// console.log(oldFiber);
 	while (oldFiber) {
 		deletions.push(oldFiber);
 		// 对比完第一个子节点后,如果此节点后有sibling兄弟节点,则让他指向兄弟节点
@@ -225,7 +222,6 @@ function updateHostComponent(fiber) {
 	reconcileChildren(fiber, children);
 }
 function performWorkOfUnit(fiber) {
-	// console.log(fiber);
 	const isFunctionComponent = typeof fiber.type === "function";
 	if (isFunctionComponent) {
 		updateFunctionComponent(fiber);
@@ -254,7 +250,6 @@ requestIdleCallback(workLoop);
 function update() {
 	let currentFiber = wipFiber;
 	return () => {
-		console.log("currentFiber", currentFiber);
 		// 改变一下当前的指针
 		wipRoot = {
 			...currentFiber,

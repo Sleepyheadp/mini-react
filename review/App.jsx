@@ -1,8 +1,10 @@
 import React from "./core/react.js";
 // const App = React.createElement("div", { id: "app" }, "hello mini-react");
+let isShow = false;
 let count = 10;
 let count_one = 1;
 let count_two = 2;
+
 function Counter({ num }) {
 	const update = React.update();
 	function handleClick() {
@@ -21,10 +23,8 @@ function Counter({ num }) {
 		</div>
 	);
 }
-// 优化渲染dom
 function CounterOne() {
 	const update = React.update();
-	console.log("one run");
 	function handleClick() {
 		count_one++;
 		update();
@@ -38,11 +38,8 @@ function CounterOne() {
 		</div>
 	);
 }
-
-// count_two
 function CounterTwo() {
 	const update = React.update();
-	console.log("two run");
 	function handleClick() {
 		count_two++;
 		update();
@@ -56,9 +53,6 @@ function CounterTwo() {
 		</div>
 	);
 }
-
-// 为什么isShow不能放ToggleBar函数组件里面?
-let isShow = false;
 function ToggleBar() {
 	// [注意]这里的foo是函数组件形式时,在toggle触发的时候,
 	// 并没有老节点的child没有被删除的情况
@@ -87,7 +81,6 @@ function ToggleBar() {
 }
 
 function App() {
-	console.log("app run");
 	return (
 		<div id="app">
 			Hello mini-react
