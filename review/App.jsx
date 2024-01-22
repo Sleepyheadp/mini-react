@@ -1,12 +1,15 @@
 import React from "./core/react.js";
 // const App = React.createElement("div", { id: "app" }, "hello mini-react");
 let count = 10;
-
+let count_one = 1;
+let count_two = 2;
 function Counter({ num }) {
+	const update = React.update();
 	function handleClick() {
 		console.log("click");
 		count++;
-		React.update();
+		update();
+		// React.update();
 	}
 
 	return (
@@ -15,6 +18,41 @@ function Counter({ num }) {
 				num_props:{num}; count:{count}
 				<button onClick={handleClick}>clikeme</button>
 			</div>
+		</div>
+	);
+}
+// 优化渲染dom
+function CounterOne() {
+	const update = React.update();
+	console.log("one run");
+	function handleClick() {
+		count_one++;
+		update();
+	}
+
+	return (
+		<div>
+			<h3>count_one</h3>
+			{count_one}
+			<button onClick={handleClick}>addCount</button>
+		</div>
+	);
+}
+
+// count_two
+function CounterTwo() {
+	const update = React.update();
+	console.log("two run");
+	function handleClick() {
+		count_two++;
+		update();
+	}
+
+	return (
+		<div>
+			<h3>count_two</h3>
+			{count_two}
+			<button onClick={handleClick}>addCount</button>
 		</div>
 	);
 }
@@ -32,9 +70,11 @@ function ToggleBar() {
 		</div>
 	);
 	const bar = <div>bar</div>;
+	const update = React.update();
 	function toggle() {
 		isShow = !isShow;
-		React.update();
+		update();
+		// React.update();
 	}
 	return (
 		<div>
@@ -47,12 +87,17 @@ function ToggleBar() {
 }
 
 function App() {
+	console.log("app run");
 	return (
 		<div id="app">
 			Hello mini-react
 			<Counter num={10}></Counter>
 			{/* <Counter num={20}></Counter> */}
+			<hr />
 			<ToggleBar></ToggleBar>
+			<hr />
+			<CounterOne></CounterOne>
+			<CounterTwo></CounterTwo>
 		</div>
 	);
 }

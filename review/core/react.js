@@ -14,7 +14,6 @@ function createElement(type, props, ...children) {
 		props: {
 			...props,
 			children: children.map((child) => {
-				console.log("child", child);
 				const isTextNode =
 					typeof child === "string" || typeof child === "number";
 				return isTextNode ? createTextNode(child) : child;
@@ -42,11 +41,18 @@ let wipRoot = null;
 let currentRoot = null;
 let nextWorkOfUnit = null; // 每个节点 也就是任务
 let deletions = [];
+let wipFiber = [];
 function workLoop(idleDeadLine) {
 	let shouldYield = false;
 	while (!shouldYield && nextWorkOfUnit) {
 		// 执行render
 		nextWorkOfUnit = performWorkOfUnit(nextWorkOfUnit);
+		// 判断
+		if (wipRoot?.sibling?.type === nextWorkOfUnit?.type) {
+			console.log(wipRoot, nextWorkOfUnit);
+			// 我们把下一个指向的节点设为null,则链表创建完成不再向下执行
+			nextWorkOfUnit = null;
+		}
 		shouldYield = idleDeadLine.timeRemaining() < 1;
 	}
 
@@ -201,6 +207,7 @@ function reconcileChildren(fiber, children) {
 }
 // 抽离处理函数组件和普通dom节点的逻辑
 function updateFunctionComponent(fiber) {
+	wipFiber = fiber;
 	// 这里不需要处理dom,函数组件并没有dom属性,只需要处理children
 	const children = [fiber.type(fiber.props)];
 	reconcileChildren(fiber, children);
@@ -245,12 +252,21 @@ function performWorkOfUnit(fiber) {
 requestIdleCallback(workLoop);
 
 function update() {
-	wipRoot = {
-		dom: currentRoot.dom,
-		props: currentRoot.props,
-		alternate: currentRoot,
+	let currentFiber = wipFiber;
+	return () => {
+		console.log("currentFiber", currentFiber);
+		// 改变一下当前的指针
+		wipRoot = {
+			...currentFiber,
+			alternate: currentFiber,
+		};
+		// wipRoot = {
+		// 	dom: currentRoot.dom,
+		// 	props: currentRoot.props,
+		// 	alternate: currentRoot,
+		// };
+		nextWorkOfUnit = wipRoot;
 	};
-	nextWorkOfUnit = wipRoot;
 }
 
 const React = {
