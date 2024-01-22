@@ -9,10 +9,12 @@ function Counter() {
 	const [count, setCount] = React.useState(10);
 	const [name, setName] = React.useState("Tom");
 	function handleClick() {
-		setCount((count) => count + 1);
+		// setCount((count) => count + 1);
+		setCount(count + 1);
 	}
 	function changeName() {
-		setName((name) => "Jerry");
+		setName("Jerry");
+		// setName((name) => "Jerry");
 	}
 
 	return (

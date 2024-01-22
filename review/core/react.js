@@ -276,29 +276,23 @@ function useState(initial) {
 		state: oldHook ? oldHook.state : initial,
 		queue: oldHook ? oldHook.queue : [],
 	};
-
 	stateHook.queue.forEach((action) => {
 		stateHook.state = action(stateHook.state);
 	});
-
 	stateHook.queue = [];
-
 	stateHookIndex++;
 	stateHooks.push(stateHook);
 
 	currentFiber.stateHooks = stateHooks;
 	// 修改值
 	function setState(action) {
-		stateHook.queue.push(action);
-
+		stateHook.queue.push(typeof action === "function" ? action : () => action);
 		wipRoot = {
 			...currentFiber,
 			alternate: currentFiber,
 		};
-
 		nextWorkOfUnit = wipRoot;
 	}
-
 	return [stateHook.state, setState];
 }
 
