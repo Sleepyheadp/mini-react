@@ -108,20 +108,6 @@ function createDom(type) {
 }
 
 function updateProps(dom, nextProps, prevProps) {
-	// Object.keys(props).forEach((key) => {
-	// 	if (key !== "children") {
-	// 		// 为什么这里是dom[key]不是很理解,dom下面不是只有type和props吗,dom[id] dom[nodeValue]能取到对应的属性吗?
-	// 		// 在更新节点的时候给dom添加事件
-	// 		if (key.startsWith("on")) {
-	// 			const eventType = key.slice(2).toLowerCase();
-	// 			console.log(eventType);
-	// 			// 绑定事件
-	// 			dom.addEventListener(eventType, props[key]);
-	// 		} else {
-	// 			dom[key] = props[key];
-	// 		}
-	// 	}
-	// });
 	// 重构updateProps 分情况处理
 	// 1. old 有 new 没有 -> 删除
 	// 遍历老的节点,当老的节点有但是新的没有就进行删除
@@ -198,6 +184,14 @@ function reconcileChildren(fiber, children) {
 		}
 		prevChild = newFiber;
 	});
+	// 在处理完子节点的时候打印一下oldFiber看一下
+	// console.log(oldFiber);
+	while (oldFiber) {
+		deletions.push(oldFiber);
+		// 对比完第一个子节点后,如果此节点后有sibling兄弟节点,则让他指向兄弟节点
+		// 也就是继续处理后续的节点
+		oldFiber = oldFiber.sibling;
+	}
 }
 // 抽离处理函数组件和普通dom节点的逻辑
 function updateFunctionComponent(fiber) {
