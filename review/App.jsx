@@ -14,9 +14,16 @@ function Counter() {
 	}
 	function changeName() {
 		setName("Jerry");
+		if (name === "Jerry") {
+			alert("changed");
+		}
 		// setName((name) => "Jerry");
 	}
-
+	// useEffect(()=>{},[]) 初始化时会调用一次
+	// useEffect(()=>{},[value]) 当value发生变化时执行
+	// useEffect(() => {
+	// 	console.log("init run");
+	// }, []);
 	return (
 		<div>
 			<div>

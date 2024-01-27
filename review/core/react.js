@@ -61,18 +61,26 @@ function workLoop(idleDeadLine) {
 	}
 	requestIdleCallback(workLoop);
 }
+
 // 怎么让他只提交一次呢?
 // 1. 在提交之前把root赋值为null
 // 2. 加判断条件,当root为null时则不进行提交
+// useEffect 在数据修改后,dom没渲染出来之前执行
 function commitRoot() {
 	// forEach参数里还能是函数形式 ()=>{} 本来就是一个箭头函数
 	deletions.forEach(commitDeletion);
 	commitWork(wipRoot.child);
+	commitEffectHook();
 	// 我们在形成新的链表结构后会把当前的链表结构赋值给新的root节点
 	currentRoot = wipRoot;
 	wipRoot = null;
 	deletions = [];
 }
+
+function commitEffectHook() {
+	console.log("effect run");
+}
+
 function commitDeletion(fiber) {
 	if (fiber.dom) {
 		let fiberParent = fiber.parent;
@@ -86,6 +94,7 @@ function commitDeletion(fiber) {
 		commitDeletion(fiber.child);
 	}
 }
+
 // 没看懂,还能递归这样处理子节点,而且fiber不是根节点了吗,为什么还要append到parent?
 function commitWork(fiber) {
 	// 这里的fiber是所有的子节点
@@ -202,6 +211,7 @@ function reconcileChildren(fiber, children) {
 		oldFiber = oldFiber.sibling;
 	}
 }
+
 // 抽离处理函数组件和普通dom节点的逻辑
 function updateFunctionComponent(fiber) {
 	stateHooks = [];
@@ -283,30 +293,40 @@ function useState(initial) {
 	stateHookIndex++;
 	stateHooks.push(stateHook);
 
-  currentFiber.stateHooks = stateHooks;
+	currentFiber.stateHooks = stateHooks;
 
-  function setState(action) {
-    const eagerState =
-      typeof action === "function" ? action(stateHook.state) : action;
+	function setState(action) {
+		const eagerState =
+			typeof action === "function" ? action(stateHook.state) : action;
 
-    if (eagerState === stateHook.state) return;
+		if (eagerState === stateHook.state) return;
 
-    stateHook.queue.push(typeof action === "function" ? action : () => action);
+		stateHook.queue.push(typeof action === "function" ? action : () => action);
 
-    wipRoot = {
-      ...currentFiber,
-      alternate: currentFiber,
-    };
+		wipRoot = {
+			...currentFiber,
+			alternate: currentFiber,
+		};
 
-    nextWorkOfUnit = wipRoot;
-  }
+		nextWorkOfUnit = wipRoot;
+	}
 
-  return [stateHook.state, setState];
+	return [stateHook.state, setState];
 }
 
+// useEffect(()=>{},deps) deps:依赖值
+// function useEffect(callback, deps) {
+// 	const effectHook = {
+// 		callback,
+// 		deps,
+// 	};
+
+// 	wipFiber.effectHook = effectHook;
+// }
 const React = {
 	update,
 	useState,
+	// useEffect,
 	render,
 	createElement,
 };
